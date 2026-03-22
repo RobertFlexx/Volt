@@ -2,6 +2,7 @@
 
 Fast minimal HTTP client built in Odin
 
+prev versions before 0.3.0 were in development testing.
 **you're welcome for the uniform comments**
 ---
 

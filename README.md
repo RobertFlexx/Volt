@@ -3,7 +3,9 @@
 Fast minimal HTTP client built in Odin
 
 prev versions before 0.3.0 were in development testing.
+
 **also --serve is a placeholder, keeping it there for when i DO implement serving a localhost server. too lazy to remove and re-add**
+
 **you're welcome for the uniform comments**
 ---
 

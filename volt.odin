@@ -154,15 +154,10 @@ usage :: proc() {
     fmt.printf("%s%s%s %s— fast minimal HTTP client%s\n\n", ANSI_BOLD, ANSI_CYAN, APP_NAME, ANSI_RESET, ANSI_RESET)
 
     fmt.printf("%sUSAGE%s\n", ANSI_BOLD, ANSI_RESET)
-    fmt.printf("    %s [options] <url>
-", APP_NAME)
-    fmt.printf("    %s --batch urls.txt [-P n]
-", APP_NAME)
-    fmt.printf("    %s --bench 100 <url>
-", APP_NAME)
-    fmt.printf("    %s --serve 8080 [--serve-dir .] [--bind 0.0.0.0]
-
-", APP_NAME)
+    fmt.printf("    %s [options] <url>\n", APP_NAME)
+    fmt.printf("    %s --batch urls.txt [-P n]\n", APP_NAME)
+    fmt.printf("    %s --bench 100 <url>\n", APP_NAME)
+    fmt.printf("    %s --serve 8080 [--serve-dir .] [--bind 0.0.0.0]\n\n", APP_NAME)
 
     fmt.printf("%sREQUEST%s\n", ANSI_BOLD, ANSI_RESET)
     fmt.printf("    %s-X, --request%s <method>       HTTP method\n", ANSI_GREEN, ANSI_RESET)
@@ -196,31 +191,18 @@ usage :: proc() {
     fmt.printf("    %s-c, --cookie-jar%s <file>      Save cookies\n", ANSI_CYAN, ANSI_RESET)
     fmt.printf("    %s-b, --cookie%s <file>          Load cookies\n\n", ANSI_CYAN, ANSI_RESET)
 
-    fmt.printf("%sMODES%s
-", ANSI_BOLD, ANSI_RESET)
-    fmt.printf("    %s    --bench%s <n>              Benchmark n requests
-", ANSI_CYAN, ANSI_RESET)
-    fmt.printf("    %s    --batch%s <file>           Read URLs from file
-", ANSI_CYAN, ANSI_RESET)
-    fmt.printf("    %s-P, --parallel%s <n>           Parallel transfers for --batch
-", ANSI_CYAN, ANSI_RESET)
-    fmt.printf("    %s    --serve%s <port>           Serve files over HTTP
-", ANSI_CYAN, ANSI_RESET)
-    fmt.printf("    %s    --bind%s <addr>            Server bind address; default 127.0.0.1
-", ANSI_CYAN, ANSI_RESET)
-    fmt.printf("    %s    --serve-dir%s <dir>        Directory to serve; default .
-", ANSI_CYAN, ANSI_RESET)
-    fmt.printf("    %s    --allow-upload%s           Enable PUT/POST uploads to /__volt/upload/<name>
-", ANSI_CYAN, ANSI_RESET)
-    fmt.printf("    %s    --upload-dir%s <dir>       Upload destination; default ./uploads
-", ANSI_CYAN, ANSI_RESET)
-    fmt.printf("    %s    --spa%s                    Fallback missing paths to index.html
-", ANSI_CYAN, ANSI_RESET)
-    fmt.printf("    %s    --no-dir-list%s            Disable generated directory listings
-", ANSI_CYAN, ANSI_RESET)
-    fmt.printf("    %s    --max-request%s <bytes>    Max server request size; default 16777216
-
-", ANSI_CYAN, ANSI_RESET)
+    fmt.printf("%sMODES%s\n", ANSI_BOLD, ANSI_RESET)
+    fmt.printf("    %s    --bench%s <n>              Benchmark n requests\n", ANSI_CYAN, ANSI_RESET)
+    fmt.printf("    %s    --batch%s <file>           Read URLs from file\n", ANSI_CYAN, ANSI_RESET)
+    fmt.printf("    %s-P, --parallel%s <n>           Parallel transfers for --batch\n", ANSI_CYAN, ANSI_RESET)
+    fmt.printf("    %s    --serve%s <port>           Serve files over HTTP\n", ANSI_CYAN, ANSI_RESET)
+    fmt.printf("    %s    --bind%s <addr>            Server bind address; default 127.0.0.1\n", ANSI_CYAN, ANSI_RESET)
+    fmt.printf("    %s    --serve-dir%s <dir>        Directory to serve; default .\n", ANSI_CYAN, ANSI_RESET)
+    fmt.printf("    %s    --allow-upload%s           Enable PUT/POST uploads to /__volt/upload/<name>\n", ANSI_CYAN, ANSI_RESET)
+    fmt.printf("    %s    --upload-dir%s <dir>       Upload destination; default ./uploads\n", ANSI_CYAN, ANSI_RESET)
+    fmt.printf("    %s    --spa%s                    Fallback missing paths to index.html\n", ANSI_CYAN, ANSI_RESET)
+    fmt.printf("    %s    --no-dir-list%s            Disable generated directory listings\n", ANSI_CYAN, ANSI_RESET)
+    fmt.printf("    %s    --max-request%s <bytes>    Max server request size; default 16777216\n\n", ANSI_CYAN, ANSI_RESET)
 
     fmt.printf("%sMISC%s\n", ANSI_BOLD, ANSI_RESET)
     fmt.printf("    %s-s, --silent%s                 No progress/status\n", ANSI_GREEN, ANSI_RESET)
@@ -237,12 +219,9 @@ usage :: proc() {
     fmt.printf("    %s -O --progress https://example.com/file.tar.xz\n", APP_NAME)
     fmt.printf("    %s --clean https://example.com/install.sh > install.sh\n", APP_NAME)
     fmt.printf("    %s --bench 50 https://example.com\n", APP_NAME)
-    fmt.printf("    %s --batch urls.txt -P 8
-", APP_NAME)
-    fmt.printf("    %s --serve 8080 --serve-dir public --bind 0.0.0.0
-", APP_NAME)
-    fmt.printf("    %s --serve 8080 --allow-upload --upload-dir drops
-", APP_NAME)
+    fmt.printf("    %s --batch urls.txt -P 8\n", APP_NAME)
+    fmt.printf("    %s --serve 8080 --serve-dir public --bind 0.0.0.0\n", APP_NAME)
+    fmt.printf("    %s --serve 8080 --allow-upload --upload-dir drops\n", APP_NAME)
 }
 
 print_version :: proc() {
@@ -1434,15 +1413,7 @@ http_reason :: proc(code: int) -> string {
 }
 
 server_header :: proc(code: int, content_type: string, length: int, extra: string = "") -> string {
-    return fmt.tprintf(
-        "HTTP/1.1 %d %s
-Server: %s/%s
-Content-Type: %s
-Content-Length: %d
-Connection: close
-X-Volt: tiny-server
-%s
-",
+    return fmt.tprintf("HTTP/1.1 %d %s\r\nServer: %s/%s\r\nContent-Type: %s\r\nContent-Length: %d\r\nConnection: close\r\nX-Volt: tiny-server\r\n%s\r\n",
         code, http_reason(code), APP_NAME, APP_VERSION, content_type, length, extra)
 }
 
@@ -1459,8 +1430,7 @@ server_send_text :: proc(sock: net.TCP_Socket, code: int, content_type: string, 
 }
 
 server_send_error :: proc(sock: net.TCP_Socket, code: int, msg: string) {
-    body := fmt.tprintf("{\"ok\":false,\"status\":%d,\"error\":\"%s\"}
-", code, msg)
+    body := fmt.tprintf("{\"ok\":false,\"status\":%d,\"error\":\"%s\"}\n", code, msg)
     server_send_text(sock, code, "application/json; charset=utf-8", body)
 }
 
@@ -1473,7 +1443,7 @@ hex_value :: proc(ch: u8) -> (int, bool) {
 
 is_path_bad :: proc(s: string) -> bool {
     if strings.contains(s, "..") do return true
-    if strings.contains(s, "\") do return true
+    if strings.contains(s, "\\") do return true
     for ch in s {
         if ch < 32 do return true
     }
@@ -1552,13 +1522,11 @@ html_escape_to :: proc(buf: ^[dynamic]u8, s: string) {
 json_escape_to :: proc(buf: ^[dynamic]u8, s: string) {
     for ch in s {
         switch ch {
-        case '\': append_str(buf, "\\")
-        case '"': append_str(buf, "\\"")
-        case '
-': append_str(buf, "\n")
-        case '
-': append_str(buf, "\r")
-        case '	': append_str(buf, "\t")
+        case '\\': append_str(buf, "\\\\")
+        case '"': append_str(buf, "\\\"")
+        case '\n': append_str(buf, "\\n")
+        case '\r': append_str(buf, "\\r")
+        case '\t': append_str(buf, "\\t")
         case: append(buf, u8(ch))
         }
     }
@@ -1649,9 +1617,7 @@ server_read_request :: proc(sock: net.TCP_Socket, max_request: int) -> (Http_Req
         }
 
         if header_end < 0 {
-            if idx := strings.index(string(raw[:]), "
-
-"); idx >= 0 {
+            if idx := strings.index(string(raw[:]), "\r\n\r\n"); idx >= 0 {
                 header_end = idx
                 content_length = request_content_length_from_header(string(raw[:header_end]))
                 if header_end + 4 + content_length > max_request {
@@ -1682,8 +1648,7 @@ server_send_file :: proc(sock: net.TCP_Socket, path: string, method: string) {
         return
     }
 
-    header := server_header(200, server_mime(path), int(fi.size), fmt.tprintf("Last-Modified: %v
-", fi.modification_time))
+    header := server_header(200, server_mime(path), int(fi.size), fmt.tprintf("Last-Modified: %v\r\n", fi.modification_time))
     send_str(sock, header)
     if method == "HEAD" do return
 
@@ -1746,8 +1711,7 @@ server_send_directory_listing :: proc(sock: net.TCP_Socket, req_path, fs_path: s
         append_str(&body, "</td></tr>")
     }
 
-    append_str(&body, "</table></body></html>
-")
+    append_str(&body, "</table></body></html>\n")
     server_send_response(sock, 200, "text/html; charset=utf-8", body[:])
 }
 
@@ -1781,8 +1745,7 @@ server_send_manifest :: proc(sock: net.TCP_Socket, root: string) {
         append_str(&body, fmt.tprintf("%d", info.size))
         append_str(&body, "}")
     }
-    append_str(&body, "]}
-")
+    append_str(&body, "]}\n")
     server_send_response(sock, 200, "application/json; charset=utf-8", body[:])
 }
 
@@ -1799,8 +1762,7 @@ server_send_echo :: proc(sock: net.TCP_Socket, req: Http_Request) {
     json_escape_to(&body, req.query)
     append_str(&body, "\",\"body_bytes\":")
     append_str(&body, fmt.tprintf("%d", len(req.body)))
-    append_str(&body, "}
-")
+    append_str(&body, "}\n")
     server_send_response(sock, 200, "application/json; charset=utf-8", body[:])
 }
 
@@ -1844,8 +1806,7 @@ server_handle_upload :: proc(sock: net.TCP_Socket, cfg: ^Config, req: Http_Reque
         return
     }
 
-    body := fmt.tprintf("{\"ok\":true,\"saved\":\"%s\",\"bytes\":%d}
-", out_path, written)
+    body := fmt.tprintf("{\"ok\":true,\"saved\":\"%s\",\"bytes\":%d}\n", out_path, written)
     server_send_text(sock, 201, "application/json; charset=utf-8", body)
 }
 
@@ -1897,13 +1858,11 @@ server_handle_client :: proc(sock: net.TCP_Socket, peer: net.Endpoint, cfg: ^Con
         return
     }
 
-    fmt.eprintf("%s%s%s %s %s from %v
-", ANSI_CYAN, "serve", ANSI_RESET, req.method, req.target, peer)
+    fmt.eprintf("%s%s%s %s %s from %v\n", ANSI_CYAN, "serve", ANSI_RESET, req.method, req.target, peer)
 
     if req.path == "/__volt/health" {
         uptime_ms := time.duration_milliseconds(time.diff(start_time, time.now()))
-        body := fmt.tprintf("{\"ok\":true,\"app\":\"%s\",\"version\":\"%s\",\"uptime_ms\":%.0f}
-", APP_NAME, APP_VERSION, uptime_ms)
+        body := fmt.tprintf("{\"ok\":true,\"app\":\"%s\",\"version\":\"%s\",\"uptime_ms\":%.0f}\n", APP_NAME, APP_VERSION, uptime_ms)
         server_send_text(sock, 200, "application/json; charset=utf-8", body)
         return
     }
@@ -1955,45 +1914,32 @@ run_server :: proc(cfg: ^Config) -> int {
     endpoint := net.Endpoint{address = bind_addr, port = cfg.serve_port}
     listener, err := net.listen_tcp(endpoint)
     if err != nil {
-        fmt.eprintf("%s%s:%s failed to listen on %s:%d: %v
-", ANSI_RED, APP_NAME, ANSI_RESET, cfg.serve_bind, cfg.serve_port, err)
+        fmt.eprintf("%s%s:%s failed to listen on %s:%d: %v\n", ANSI_RED, APP_NAME, ANSI_RESET, cfg.serve_bind, cfg.serve_port, err)
         return 1
     }
     defer net.close(listener)
 
     if !os.exists(cfg.serve_dir) || !os.is_directory(cfg.serve_dir) {
-        fmt.eprintf("%s%s:%s serve directory does not exist or is not a directory: %s
-", ANSI_RED, APP_NAME, ANSI_RESET, cfg.serve_dir)
+        fmt.eprintf("%s%s:%s serve directory does not exist or is not a directory: %s\n", ANSI_RED, APP_NAME, ANSI_RESET, cfg.serve_dir)
         return 1
     }
 
     start_time := time.now()
-    fmt.eprintf("
-%s%s%s serving %s%s%s
-", ANSI_BOLD, ANSI_CYAN, APP_NAME, ANSI_RESET, ANSI_BOLD, cfg.serve_dir, ANSI_RESET)
-    fmt.eprintf("  url:        %shttp://%s:%d/%s
-", ANSI_GREEN, cfg.serve_bind, cfg.serve_port, ANSI_RESET)
-    fmt.eprintf("  health:     %shttp://%s:%d/__volt/health%s
-", ANSI_GREEN, cfg.serve_bind, cfg.serve_port, ANSI_RESET)
-    fmt.eprintf("  manifest:   %shttp://%s:%d/__volt/manifest%s
-", ANSI_GREEN, cfg.serve_bind, cfg.serve_port, ANSI_RESET)
+    fmt.eprintf("\n%s%s%s serving %s%s%s\n", ANSI_BOLD, ANSI_CYAN, APP_NAME, ANSI_RESET, ANSI_BOLD, cfg.serve_dir, ANSI_RESET)
+    fmt.eprintf("  url:        %shttp://%s:%d/%s\n", ANSI_GREEN, cfg.serve_bind, cfg.serve_port, ANSI_RESET)
+    fmt.eprintf("  health:     %shttp://%s:%d/__volt/health%s\n", ANSI_GREEN, cfg.serve_bind, cfg.serve_port, ANSI_RESET)
+    fmt.eprintf("  manifest:   %shttp://%s:%d/__volt/manifest%s\n", ANSI_GREEN, cfg.serve_bind, cfg.serve_port, ANSI_RESET)
     if cfg.serve_allow_upload {
-        fmt.eprintf("  uploads:    %shttp://%s:%d/__volt/upload/<name>%s -> %s
-", ANSI_GREEN, cfg.serve_bind, cfg.serve_port, ANSI_RESET, cfg.serve_upload_dir)
+        fmt.eprintf("  uploads:    %shttp://%s:%d/__volt/upload/<name>%s -> %s\n", ANSI_GREEN, cfg.serve_bind, cfg.serve_port, ANSI_RESET, cfg.serve_upload_dir)
     }
-    fmt.eprintf("  bind:       %s:%d
-", cfg.serve_bind, cfg.serve_port)
-    fmt.eprintf("  max req:    %s
-", format_bytes(i64(cfg.serve_max_request)))
-    fmt.eprintf("  stop:       Ctrl+C
-
-")
+    fmt.eprintf("  bind:       %s:%d\n", cfg.serve_bind, cfg.serve_port)
+    fmt.eprintf("  max req:    %s\n", format_bytes(i64(cfg.serve_max_request)))
+    fmt.eprintf("  stop:       Ctrl+C\n\n")
 
     for {
         client, peer, aerr := net.accept_tcp(listener)
         if aerr != nil {
-            fmt.eprintf("%saccept:%s %v
-", ANSI_YELLOW, ANSI_RESET, aerr)
+            fmt.eprintf("%saccept:%s %v\n", ANSI_YELLOW, ANSI_RESET, aerr)
             continue
         }
         server_handle_client(client, peer, cfg, start_time)

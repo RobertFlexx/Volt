@@ -13,7 +13,7 @@ import "core:time"
 import curl "vendor:curl"
 
 APP_NAME    :: "volt"
-APP_VERSION :: "0.4.0"
+APP_VERSION :: "0.5.0"
 DEFAULT_UA  :: APP_NAME + "/" + APP_VERSION
 
 DEFAULT_TIMEOUT         :: 30
@@ -21,17 +21,17 @@ DEFAULT_CONNECT_TIMEOUT :: 10
 DEFAULT_MAX_REDIRECTS   :: 50
 DEFAULT_PARALLEL        :: 4
 
-ANSI_RESET      :: "\x1b[0m"
-ANSI_BOLD       :: "\x1b[1m"
-ANSI_DIM        :: "\x1b[2m"
-ANSI_RED        :: "\x1b[31m"
-ANSI_GREEN      :: "\x1b[32m"
-ANSI_YELLOW     :: "\x1b[33m"
-ANSI_BLUE       :: "\x1b[34m"
-ANSI_MAGENTA    :: "\x1b[35m"
-ANSI_CYAN       :: "\x1b[36m"
-ANSI_WHITE      :: "\x1b[37m"
-ANSI_CLEAR_LINE :: "\x1b[2K\r"
+ANSI_RESET:      string = "\x1b[0m"
+ANSI_BOLD:       string = "\x1b[1m"
+ANSI_DIM:        string = "\x1b[2m"
+ANSI_RED:        string = "\x1b[31m"
+ANSI_GREEN:      string = "\x1b[32m"
+ANSI_YELLOW:     string = "\x1b[33m"
+ANSI_BLUE:       string = "\x1b[34m"
+ANSI_MAGENTA:    string = "\x1b[35m"
+ANSI_CYAN:       string = "\x1b[36m"
+ANSI_WHITE:      string = "\x1b[37m"
+ANSI_CLEAR_LINE: string = "\x1b[2K\r"
 
 SYM_OK   :: "✓"
 SYM_FAIL :: "✖"
@@ -81,6 +81,11 @@ Config :: struct {
 	serve_spa:          bool,
 	serve_dir_list:     bool,
 	serve_max_request:  int,
+	no_color:           bool,
+	dry_run:            bool,
+	no_body:            bool,
+	status_only:        bool,
+	retry_all_errors:   bool,
 }
 
 Payload :: struct {
@@ -137,6 +142,20 @@ Batch_Job :: struct {
 	done:     bool,
 }
 
+disable_colors :: proc() {
+	ANSI_RESET = ""
+	ANSI_BOLD = ""
+	ANSI_DIM = ""
+	ANSI_RED = ""
+	ANSI_GREEN = ""
+	ANSI_YELLOW = ""
+	ANSI_BLUE = ""
+	ANSI_MAGENTA = ""
+	ANSI_CYAN = ""
+	ANSI_WHITE = ""
+	ANSI_CLEAR_LINE = "\r"
+}
+
 usage :: proc() {
 	fmt.printf(
 		"%s%s%s %s— fast minimal HTTP client%s\n\n",
@@ -169,7 +188,9 @@ usage :: proc() {
 	fmt.printf("    %s-D, --dump-headers%s <file>    Write response headers to file\n", ANSI_GREEN, ANSI_RESET)
 	fmt.printf("    %s    --json-pretty%s            Pretty-print JSON response\n", ANSI_CYAN, ANSI_RESET)
 	fmt.printf("    %s    --clean%s                  Body only; good for scripts/pipes\n", ANSI_CYAN, ANSI_RESET)
-	fmt.printf("    %s    --raw%s                    Disable extra newline/status formatting\n\n", ANSI_GREEN, ANSI_RESET)
+	fmt.printf("    %s    --raw%s                    Disable extra newline/status formatting\n", ANSI_GREEN, ANSI_RESET)
+	fmt.printf("    %s    --no-body%s                Discard the response body\n", ANSI_CYAN, ANSI_RESET)
+	fmt.printf("    %s    --status%s                 Print only the HTTP status code\n\n", ANSI_CYAN, ANSI_RESET)
 
 	fmt.printf("%sNETWORK%s\n", ANSI_BOLD, ANSI_RESET)
 	fmt.printf("    %s-L, --location%s               Follow redirects; default on\n", ANSI_GREEN, ANSI_RESET)
@@ -180,7 +201,8 @@ usage :: proc() {
 	fmt.printf("    %s-t, --timeout%s <sec>          Total timeout; default %d\n", ANSI_GREEN, ANSI_RESET, DEFAULT_TIMEOUT)
 	fmt.printf("    %s    --connect-timeout%s <sec>  Connect timeout; default %d\n", ANSI_GREEN, ANSI_RESET, DEFAULT_CONNECT_TIMEOUT)
 	fmt.printf("    %s    --retry%s <n>              Retry transient failures\n", ANSI_CYAN, ANSI_RESET)
-	fmt.printf("    %s    --retry-delay%s <ms>       Delay between retries\n", ANSI_CYAN, ANSI_RESET)
+	fmt.printf("    %s    --retry-delay%s <ms>       Initial retry delay; exponential backoff\n", ANSI_CYAN, ANSI_RESET)
+	fmt.printf("    %s    --retry-all-errors%s       Retry every transport/HTTP failure\n", ANSI_CYAN, ANSI_RESET)
 	fmt.printf("    %s    --limit-rate%s <bytes/s>   Limit download/upload rate\n", ANSI_CYAN, ANSI_RESET)
 	fmt.printf("    %s-c, --cookie-jar%s <file>      Save cookies\n", ANSI_CYAN, ANSI_RESET)
 	fmt.printf("    %s-b, --cookie%s <file>          Load cookies\n\n", ANSI_CYAN, ANSI_RESET)
@@ -204,6 +226,8 @@ usage :: proc() {
 	fmt.printf("    %s-v, --verbose%s                libcurl verbose output\n", ANSI_GREEN, ANSI_RESET)
 	fmt.printf("    %s    --debug%s                  Timing breakdown\n", ANSI_CYAN, ANSI_RESET)
 	fmt.printf("    %s    --progress%s               Show progress meter\n", ANSI_CYAN, ANSI_RESET)
+	fmt.printf("    %s    --dry-run%s                Validate and show request without sending\n", ANSI_CYAN, ANSI_RESET)
+	fmt.printf("    %s    --no-color%s               Disable ANSI styling\n", ANSI_CYAN, ANSI_RESET)
 	fmt.printf("    %s-h, --help%s                   Show help\n", ANSI_GREEN, ANSI_RESET)
 	fmt.printf("    %s    --version%s                Show version\n\n", ANSI_GREEN, ANSI_RESET)
 
@@ -243,13 +267,13 @@ need_arg :: proc(args: []string, i: int, flag: string) -> string {
 
 parse_positive_int :: proc(s, name: string) -> int {
 	n := int(strconv.parse_int(s) or_else -1)
-	if n < 0 do fail(fmt.tprintf("%s must be a positive integer", name), 2)
+	if n <= 0 do fail(fmt.tprintf("%s must be a positive integer", name), 2)
 	return n
 }
 
 parse_positive_i64 :: proc(s, name: string) -> i64 {
 	n := strconv.parse_int(s) or_else -1
-	if n < 0 do fail(fmt.tprintf("%s must be a positive integer", name), 2)
+	if n <= 0 do fail(fmt.tprintf("%s must be a positive integer", name), 2)
 	return i64(n)
 }
 
@@ -316,6 +340,14 @@ parse_args :: proc(cfg: ^Config, args: []string) {
 		case "--raw":
 			cfg.raw = true
 
+		case "--no-body":
+			cfg.no_body = true
+
+		case "--status", "--status-code":
+			cfg.status_only = true
+			cfg.silent = true
+			cfg.raw = true
+
 		case "-L", "--location":
 			cfg.follow_redirects = true
 
@@ -347,6 +379,13 @@ parse_args :: proc(cfg: ^Config, args: []string) {
 		case "--progress":
 			cfg.progress = true
 
+		case "--dry-run":
+			cfg.dry_run = true
+
+		case "--no-color", "--color=never":
+			cfg.no_color = true
+			disable_colors()
+
 		case "-A", "--user-agent":
 			cfg.user_agent = need_arg(args, i, arg)
 			i += 1
@@ -366,6 +405,9 @@ parse_args :: proc(cfg: ^Config, args: []string) {
 		case "--retry-delay":
 			cfg.retry_delay_ms = parse_positive_int(need_arg(args, i, arg), "--retry-delay")
 			i += 1
+
+		case "--retry-all-errors":
+			cfg.retry_all_errors = true
 
 		case "--limit-rate":
 			cfg.limit_rate_bps = parse_positive_i64(need_arg(args, i, arg), "--limit-rate")
@@ -443,6 +485,18 @@ parse_args :: proc(cfg: ^Config, args: []string) {
 	if cfg.serve_max_request <= 0 do cfg.serve_max_request = 16 * 1024 * 1024
 	if cfg.head_request do cfg.method = "HEAD"
 	if cfg.remote_name && cfg.output_path == "" && cfg.url != "" do cfg.output_path = remote_name_from_url(cfg.url)
+	modes := 0
+	if cfg.serve_port > 0 do modes += 1
+	if cfg.batch_file != "" do modes += 1
+	if cfg.bench_count > 0 do modes += 1
+	if modes > 1 do fail("--serve, --batch, and --bench are mutually exclusive", 2)
+	if cfg.head_request && cfg.data != "" do fail("--head cannot be combined with --data", 2)
+	if cfg.status_only && cfg.output_path != "" do fail("--status cannot be combined with --output", 2)
+	if cfg.no_body && cfg.output_path != "" do fail("--no-body cannot be combined with --output", 2)
+	if cfg.batch_file != "" && cfg.output_path != "" do fail("--output is not supported in batch mode", 2)
+	if cfg.progress && cfg.silent && !cfg.status_only do fail("--progress cannot be combined with --silent/--clean", 2)
+	if cfg.resume && cfg.output_path == "" do fail("--continue-at requires --output or --remote-name", 2)
+
 	if cfg.serve_port <= 0 && cfg.batch_file == "" && cfg.url == "" {
 		usage()
 		os.exit(2)
@@ -948,7 +1002,7 @@ get_timing :: proc(handle: ^curl.CURL) -> Timing_Info {
 }
 
 print_timing :: proc(t: Timing_Info) {
-	fmt.eprintf("\n%s─── Timing ─────────────────────%s\n", ANSI_DIM, ANSI_RESET)
+	fmt.eprintf("\n%s--- Timing ---------------------%s\n", ANSI_DIM, ANSI_RESET)
 	fmt.eprintf("  %sDNS%s           %s\n", ANSI_CYAN, ANSI_RESET, format_ms(t.namelookup_ms))
 	fmt.eprintf("  %sTCP%s           %s\n", ANSI_CYAN, ANSI_RESET, format_ms(t.connect_ms))
 	if t.tls_ms > 0 do fmt.eprintf("  %sTLS%s           %s\n", ANSI_CYAN, ANSI_RESET, format_ms(t.tls_ms))
@@ -956,7 +1010,7 @@ print_timing :: proc(t: Timing_Info) {
 	fmt.eprintf("  %sTransfer%s      %s\n", ANSI_CYAN, ANSI_RESET, format_ms(t.transfer_ms))
 	fmt.eprintf("  %sRedirects%s     %d\n", ANSI_CYAN, ANSI_RESET, t.redirect_count)
 	fmt.eprintf("  %sSpeed%s         %s/s\n", ANSI_CYAN, ANSI_RESET, format_bytes(t.speed_bps))
-	fmt.eprintf("%s────────────────────────────────%s\n", ANSI_DIM, ANSI_RESET)
+	fmt.eprintf("%s--------------------------------%s\n", ANSI_DIM, ANSI_RESET)
 	fmt.eprintf("  %sTotal%s         %s\n", ANSI_BOLD, ANSI_RESET, format_ms(t.total_ms))
 }
 
@@ -1089,26 +1143,33 @@ run_single :: proc(cfg: ^Config, method: string, payload: ^Payload) -> int {
 	attempts := cfg.retry_count + 1
 
 	for attempt := 0; attempt < attempts; attempt += 1 {
-		if attempt > 0 && !cfg.silent {
-			fmt.eprintf(
-				"%s%s%s retry %d/%d after %dms\n",
-				ANSI_YELLOW,
-				SYM_WARN,
-				ANSI_RESET,
-				attempt,
-				cfg.retry_count,
-				cfg.retry_delay_ms,
-			)
-			time.sleep(time.Duration(f64(cfg.retry_delay_ms) * f64(time.Millisecond)))
+		if attempt > 0 {
+			delay_ms := cfg.retry_delay_ms
+			for _ in 1..<attempt do delay_ms *= 2
+			if delay_ms > 30000 do delay_ms = 30000
+			if !cfg.silent {
+				fmt.eprintf(
+					"%s%s%s retry %d/%d after %dms\n",
+					ANSI_YELLOW,
+					SYM_WARN,
+					ANSI_RESET,
+					attempt,
+					cfg.retry_count,
+					delay_ms,
+				)
+			}
+			time.sleep(time.Duration(f64(delay_ms) * f64(time.Millisecond)))
 		}
 
-		result, body, head := perform_once(cfg, cfg.url, method, payload, cfg.output_path != "")
+		result, body, head := perform_once(cfg, cfg.url, method, payload, cfg.output_path != "", cfg.no_body)
 		final_result = result
 		final_body = body
 		final_head = head
 
 		retry := false
 		if result.curl_code != .E_OK {
+			retry = attempt < cfg.retry_count
+		} else if cfg.retry_all_errors && result.status >= 400 {
 			retry = attempt < cfg.retry_count
 		} else if is_retryable_status(result.status) {
 			retry = attempt < cfg.retry_count
@@ -1139,6 +1200,12 @@ run_single :: proc(cfg: ^Config, method: string, payload: ^Payload) -> int {
 		return 22
 	}
 
+	if cfg.status_only {
+		fmt.printf("%d\n", final_result.status)
+		if final_result.status >= 400 do return 1
+		return 0
+	}
+
 	pretty := !cfg.silent && !cfg.raw && !cfg.clean && os.is_tty(os.stderr)
 	if pretty do print_response_line(method, cfg.url, final_result.status, final_result.duration, final_result.bytes)
 	if cfg.debug do print_timing(final_result.timing)
@@ -1153,7 +1220,7 @@ run_single :: proc(cfg: ^Config, method: string, payload: ^Payload) -> int {
 		}
 	}
 
-	if cfg.output_path == "" && len(final_body.buf) > 0 {
+	if !cfg.no_body && cfg.output_path == "" && len(final_body.buf) > 0 {
 		if cfg.json_pretty && (final_body.buf[0] == '{' || final_body.buf[0] == '[') {
 			json_pretty_print(final_body.buf[:])
 		} else {
@@ -1244,11 +1311,28 @@ run_benchmark :: proc(cfg: ^Config, method: string, payload: ^Payload) -> int {
 
 	stddev := math.sqrt(variance / f64(len(times)))
 
-	fmt.eprintf("\n%s─── Results ────────────────────%s\n", ANSI_DIM, ANSI_RESET)
+	// Small in-place insertion sort keeps the benchmark self-contained.
+	for i := 1; i < len(times); i += 1 {
+		v := times[i]
+		j := i - 1
+		for j >= 0 && times[j] > v {
+			times[j + 1] = times[j]
+			j -= 1
+		}
+		times[j + 1] = v
+	}
+	p50 := times[(len(times) - 1) * 50 / 100]
+	p95 := times[(len(times) - 1) * 95 / 100]
+	p99 := times[(len(times) - 1) * 99 / 100]
+
+	fmt.eprintf("\n%s--- Results ---------------------%s\n", ANSI_DIM, ANSI_RESET)
 	fmt.eprintf("  %sRequests%s    %d ok, %d failed\n", ANSI_WHITE, ANSI_RESET, len(times), failures)
 	fmt.eprintf("  %sAverage%s     %s\n", ANSI_CYAN, ANSI_RESET, format_ms(avg))
 	fmt.eprintf("  %sMin%s         %s\n", ANSI_GREEN, ANSI_RESET, format_ms(min_t))
 	fmt.eprintf("  %sMax%s         %s\n", ANSI_YELLOW, ANSI_RESET, format_ms(max_t))
+	fmt.eprintf("  %sMedian%s      %s\n", ANSI_CYAN, ANSI_RESET, format_ms(p50))
+	fmt.eprintf("  %sP95%s         %s\n", ANSI_YELLOW, ANSI_RESET, format_ms(p95))
+	fmt.eprintf("  %sP99%s         %s\n", ANSI_MAGENTA, ANSI_RESET, format_ms(p99))
 	fmt.eprintf("  %sStd Dev%s     %s\n", ANSI_MAGENTA, ANSI_RESET, format_ms(stddev))
 	fmt.eprintf("  %sReq/sec%s     %.2f\n", ANSI_WHITE, ANSI_RESET, 1000.0 / avg)
 
@@ -1438,7 +1522,7 @@ run_batch :: proc(cfg: ^Config, method: string, payload: ^Payload) -> int {
 
 	total_dur := time.diff(start_all, time.now())
 
-	fmt.eprintf("\n%s─── Summary ────────────────────%s\n", ANSI_DIM, ANSI_RESET)
+	fmt.eprintf("\n%s--- Summary --------------------%s\n", ANSI_DIM, ANSI_RESET)
 	fmt.eprintf("  %sSuccess%s     %d\n", ANSI_GREEN, ANSI_RESET, success)
 	fmt.eprintf("  %sFailed%s      %d\n", ANSI_RED, ANSI_RESET, failed)
 	fmt.eprintf("  %sTotal%s       %s, %s\n", ANSI_CYAN, ANSI_RESET, format_duration(total_dur), format_bytes(total_bytes))
@@ -2161,6 +2245,20 @@ run_server :: proc(cfg: ^Config) -> int {
 	return 0
 }
 
+print_dry_run :: proc(cfg: ^Config, method: string, payload: ^Payload) {
+	fmt.printf("%s%sDry run%s\n", ANSI_BOLD, ANSI_CYAN, ANSI_RESET)
+	fmt.printf("  method:  %s\n", method)
+	fmt.printf("  url:     %s\n", cfg.url)
+	fmt.printf("  body:    %s\n", format_bytes(i64(payload_len(payload))))
+	fmt.printf("  timeout: %ds (connect %ds)\n", cfg.timeout_seconds, cfg.connect_timeout)
+	fmt.printf("  redirects: %v (max %d)\n", cfg.follow_redirects, cfg.max_redirects)
+	if len(cfg.headers) > 0 {
+		fmt.printf("  headers:\n")
+		for h in cfg.headers do fmt.printf("    %s\n", h)
+	}
+	if cfg.output_path != "" do fmt.printf("  output:  %s\n", cfg.output_path)
+}
+
 app_main :: proc() -> int {
 	cfg := Config{
 		follow_redirects = true,
@@ -2186,6 +2284,11 @@ app_main :: proc() -> int {
 
 	method := cfg.method
 	if method == "" do method = payload_len(&payload) > 0 ? "POST" : "GET"
+
+	if cfg.dry_run {
+		print_dry_run(&cfg, method, &payload)
+		return 0
+	}
 
 	if curl.global_init(0) != .E_OK do fail("failed to initialize curl")
 	defer curl.global_cleanup()
